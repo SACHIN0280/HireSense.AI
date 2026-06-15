@@ -123,16 +123,16 @@ def build_html_report(result: dict, keyword_score: int) -> str:
 
     matched_badges = "".join(
         f'<span class="badge badge-green">✓ {s}</span>'
-        for s in result.get("matched_skills", [])
+        for s in (result.get("matched_skills") or [])
     ) or '<span class="muted">None found</span>'
 
     missing_badges = "".join(
         f'<span class="badge badge-red">✗ {s}</span>'
-        for s in result.get("missing_skills", [])
+        for s in (result.get("missing_skills") or [])
     ) or '<span class="muted">No critical gaps</span>'
 
     bullets_html = ""
-    for item in result.get("weak_bullets", []):
+    for item in (result.get("weak_bullets") or []):
         bullets_html += f"""
         <div class="bullet-card">
             <div class="bullet-label">Original</div>
@@ -143,12 +143,12 @@ def build_html_report(result: dict, keyword_score: int) -> str:
     if not bullets_html:
         bullets_html = '<p class="muted">No weak bullets found — great job!</p>'
 
-    missing_sec = result.get("missing_sections", [])
+    missing_sec = result.get("missing_sections") or []
     sections_html = "".join(
         f'<div class="issue-row red">⚠ Missing: {s}</div>' for s in missing_sec
     ) or '<div class="ok-row">✓ All key sections present</div>'
 
-    grammar = result.get("grammar_issues", [])
+    grammar = result.get("grammar_issues") or []
     grammar_html = "".join(
         f'<div class="issue-row yellow">💡 {g}</div>' for g in grammar
     ) or '<div class="ok-row">✓ No language issues found</div>'
