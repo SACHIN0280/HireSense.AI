@@ -13,6 +13,12 @@ STOP_WORDS = {
     'you', 'we', 'our', 'your', 'they', 'this', 'that', 'it', 'not',
     'from', 'but', 'all', 'can', 'its', 'their', 'also', 'if', 'which',
     'who', 'been', 'more', 'about', 'than', 'into', 'such', 'when',
+    'experience', 'work', 'years', 'team', 'working', 'skills', 'role',
+    'project', 'projects', 'required', 'preferred', 'using', 'strong',
+    'knowledge', 'ability', 'development', 'business', 'new', 'data',
+    'management', 'support', 'design', 'building', 'understanding',
+    'system', 'systems', 'including', 'application', 'applications',
+    'software', 'developer', 'engineer', 'engineering', 'good', 'excellent'
 }
 
 # ── Text helpers ──────────────────────────────────────────────────────────────

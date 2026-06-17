@@ -9,9 +9,8 @@ SCORING RULES (total = 100):
 - Education match (15 points): Degree and field relevance
 - Achievement quality (20 points): Quantified results vs vague responsibilities
 
-Note: The keyword-based match score is {keyword_score}%. Use this as a strong reference.
-Be generous and realistic. Recognize good formatting, relevant skills, and good structure. Good resumes should score 75-95%.
-
+Note: The keyword-based match score is {keyword_score}%. Use this as a reference, but evaluate the actual semantic match of skills and experience.
+Be strict and objective. Strongly penalize resumes that do not match the core skills, technologies, and role of the job description (e.g., a Data Science resume applying for a Frontend role should score poorly). Unrelated skills or experience should receive 0 points for their respective categories.
 Return ONLY this JSON, no extra text, no markdown fences:
 {{
     "match_score": <realistic number 0-100 based on above criteria>,
