@@ -1,7 +1,7 @@
 import re
 import io
 import json
-import pypdf
+import pdfplumber
 import streamlit as st
 from groq import Groq
 from prompts import ANALYSIS_PROMPT
@@ -13,17 +13,16 @@ STOP_WORDS = {
     'you', 'we', 'our', 'your', 'they', 'this', 'that', 'it', 'not',
     'from', 'but', 'all', 'can', 'its', 'their', 'also', 'if', 'which',
     'who', 'been', 'more', 'about', 'than', 'into', 'such', 'when',
-    'experience', 'work', 'years', 'team', 'working', 'skills', 'role',
-    'project', 'projects', 'required', 'preferred', 'using', 'strong',
-    'knowledge', 'ability', 'development', 'business', 'new', 'data',
-    'management', 'support', 'design', 'building', 'understanding',
-    'system', 'systems', 'including', 'application', 'applications',
-    'software', 'developer', 'engineer', 'engineering', 'good', 'excellent'
 }
 
 # ── Text helpers ──────────────────────────────────────────────────────────────
 
 def clean_text(text: str) -> str:
+    # Fix lowercase-to-uppercase glued words (wordWord -> word Word)
+    text = re.sub(r'(?<=[a-z])(?=[A-Z])', ' ', text)
+    # Fix letter-digit boundaries (e.g. "Present2024" -> "Present 2024")
+    text = re.sub(r'(?<=[a-zA-Z])(?=[0-9])', ' ', text)
+    text = re.sub(r'(?<=[0-9])(?=[a-zA-Z])', ' ', text)
     text = re.sub(r'\s+', ' ', text)
     text = re.sub(r'[^\x00-\x7F]+', ' ', text)
     return text.strip()
@@ -32,10 +31,15 @@ def clean_text(text: str) -> str:
 # Cache PDF extraction by file bytes so re-runs are free
 @st.cache_data(show_spinner=False)
 def extract_text_from_pdf(file_bytes: bytes) -> str:
-    """Extract and clean text from PDF bytes."""
-    pdf_reader = pypdf.PdfReader(io.BytesIO(file_bytes))
-    text = "".join(page.extract_text() or "" for page in pdf_reader.pages)
-    cleaned = clean_text(text)
+    """Extract and clean text from PDF bytes using pdfplumber (preserves layout/spacing far better than pypdf)."""
+    text_parts = []
+    with pdfplumber.open(io.BytesIO(file_bytes)) as pdf:
+        for page in pdf.pages:
+            page_text = page.extract_text()
+            if page_text:
+                text_parts.append(page_text)
+    raw_text = "\n".join(text_parts)
+    cleaned = clean_text(raw_text)
     if not cleaned or len(cleaned) < 50:
         raise ValueError("Could not extract readable text from the PDF. Is it scanned/image-based?")
     return cleaned
@@ -79,11 +83,9 @@ def analyze_resume(resume_text: str, jd_text: str, keyword_score: int) -> dict |
         response = client.chat.completions.create(
             model="llama-3.3-70b-versatile",
             messages=[{"role": "user", "content": prompt}],
-            max_tokens=1500,
+            max_tokens=2000,
             temperature=0.0,
             seed=42,
-            response_format={"type": "json_object"},  # force JSON mode
-
         )
         raw = response.choices[0].message.content
         # Strip any accidental markdown fences
@@ -129,16 +131,16 @@ def build_html_report(result: dict, keyword_score: int) -> str:
 
     matched_badges = "".join(
         f'<span class="badge badge-green">✓ {s}</span>'
-        for s in (result.get("matched_skills") or [])
+        for s in result.get("matched_skills", [])
     ) or '<span class="muted">None found</span>'
 
     missing_badges = "".join(
         f'<span class="badge badge-red">✗ {s}</span>'
-        for s in (result.get("missing_skills") or [])
+        for s in result.get("missing_skills", [])
     ) or '<span class="muted">No critical gaps</span>'
 
     bullets_html = ""
-    for item in (result.get("weak_bullets") or []):
+    for item in result.get("weak_bullets", []):
         bullets_html += f"""
         <div class="bullet-card">
             <div class="bullet-label">Original</div>
@@ -149,12 +151,12 @@ def build_html_report(result: dict, keyword_score: int) -> str:
     if not bullets_html:
         bullets_html = '<p class="muted">No weak bullets found — great job!</p>'
 
-    missing_sec = result.get("missing_sections") or []
+    missing_sec = result.get("missing_sections", [])
     sections_html = "".join(
         f'<div class="issue-row red">⚠ Missing: {s}</div>' for s in missing_sec
     ) or '<div class="ok-row">✓ All key sections present</div>'
 
-    grammar = result.get("grammar_issues") or []
+    grammar = result.get("grammar_issues", [])
     grammar_html = "".join(
         f'<div class="issue-row yellow">💡 {g}</div>' for g in grammar
     ) or '<div class="ok-row">✓ No language issues found</div>'
